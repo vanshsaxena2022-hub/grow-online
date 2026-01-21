@@ -4,6 +4,11 @@ const path = require("path");
 const QRCode = require("qrcode");
 
 const app = express();
+
+app.get("/health", (req, res) => {
+  res.json({ status: "LIVE" });
+});
+
 app.use(cors());
 app.use(express.static("public"));
 app.use("/assets", express.static("assets"));
@@ -71,5 +76,5 @@ app.get("/get-qr", async (req, res) => {
 
 /* ================= START ================= */
 app.listen(PORT, () => {
-  console.log("Decor SaaS running on http://localhost:" + PORT);
+  console.log("Decor SaaS running on port", PORT);
 });
