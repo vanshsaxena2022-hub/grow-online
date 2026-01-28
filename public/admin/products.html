@@ -1,138 +1,29 @@
-<h2>Products</h2>
-
-<div id="products" class="grid"></div>
-
-<style>
-.grid {
-  display: grid;
-  gap: 14px;
-}
-
-.card {
-  background: #fff;
-  border-radius: 14px;
-  padding: 14px;
-  display: grid;
-  grid-template-columns: 90px 1fr auto;
-  align-items: center;
-  gap: 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.08);
-}
-
-.card img {
-  width: 90px;
-  height: 90px;
-  object-fit: cover;
-  border-radius: 12px;
-  background: #eee;
-}
-
-.meta {
-  font-size: 14px;
-}
-
-.meta b {
-  display: block;
-  font-size: 16px;
-}
-
-.badge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  background: #eee;
-}
-
-.badge.ar {
-  background: #25D366;
-  color: #fff;
-}
-
-.actions button {
-  display: block;
-  width: 100%;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
-  margin-bottom: 6px;
-}
-
-.actions .edit {
-  background: #000;
-  color: #fff;
-}
-
-.actions .delete {
-  background: #ff4d4d;
-  color: #fff;
-}
-</style>
-
 <script>
-const shopId = sessionStorage.getItem("shop_id");
-const token  = sessionStorage.getItem("token");
+async function deleteProduct(productId) {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Session expired. Please login again.");
+    window.location.href = "/admin/login.html";
+    return;
+  }
 
-if (!shopId || !token) {
-  location.replace("/admin/login.html");
-}
+  const ok = confirm("Are you sure you want to delete this product?");
+  if (!ok) return;
 
-/* LOAD PRODUCTS — SAME API AS CUSTOMER */
-fetch("/api/products?shop=" + shopId)
-  .then(r => r.json())
-  .then(list => {
-    const box = document.getElementById("products");
-    box.innerHTML = "";
-
-    if (!list.length) {
-      box.innerHTML = "<p>No products added yet.</p>";
-      return;
-    }
-
-    list.forEach(p => {
-      const img = (p.image_urls && p.image_urls[0]) || p.image_url || "";
-
-      box.innerHTML += `
-        <div class="card">
-          <img src="${img}">
-          
-          <div class="meta">
-            <b>${p.category}</b>
-            <span class="badge ${p.ar_model ? "ar" : ""}">
-              ${p.ar_model ? "AR Enabled" : "No AR"}
-            </span>
-          </div>
-
-          <div class="actions">
-            <button class="edit" onclick="editProduct('${p.id}')">
-              Edit
-            </button>
-            <button class="delete" onclick="deleteProduct('${p.id}')">
-              Delete
-            </button>
-          </div>
-        </div>
-      `;
-    });
-  });
-
-function editProduct(id) {
-  location.href = "/admin/edit-product.html?id=" + id;
-}
-
-function deleteProduct(id) {
-  if (!confirm("Delete this product?")) return;
-
-  fetch("/api/admin/product/" + id, {
+  const res = await fetch(`/api/admin/product/${productId}`, {
     method: "DELETE",
     headers: {
-      Authorization: sessionStorage.getItem("token")
+      "Authorization": "Bearer " + token
     }
-  })
-  .then(r => {
-    if (!r.ok) throw new Error("Delete failed");
-    location.reload();
   });
+
+  if (!res.ok) {
+    const msg = await res.text();
+    alert("Delete failed: " + msg);
+    return;
+  }
+
+  // refresh product list
+  loadProducts();
 }
 </script>

@@ -1,70 +1,346 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Admin Panel</title>
+  <meta charset="UTF-8" />
+  <title>Admin Panel</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<style>
-body{margin:0;font-family:Arial;background:#f6f6f6}
-.sidebar{
-  position:fixed;left:0;top:0;
-  width:170px;height:100vh;
-  background:#000;padding-top:20px
-}
-.sidebar a{
-  display:block;padding:12px 16px;
-  color:#bbb;text-decoration:none;font-size:14px
-}
-.sidebar a.active,.sidebar a:hover{
-  background:#111;color:#fff;
-  border-left:4px solid #25D366
-}
-.main{margin-left:170px;padding:22px}
-</style>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { margin: 0; background: #f5f6f8; }
+
+    /* ========== SIDEBAR ========== */
+    .sidebar {
+      position: fixed;
+      left: 0; top: 0;
+      width: 220px;
+      height: 100vh;
+      background: #000;
+      color: #fff;
+      padding: 20px 15px;
+    }
+
+    .brand {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 30px;
+    }
+
+    .nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      color: #bbb;
+      text-decoration: none;
+      border-radius: 6px;
+      margin-bottom: 5px;
+    }
+
+    .nav a.active, .nav a:hover {
+      background: #111;
+      color: #00ff99;
+    }
+
+    .logout-btn {
+      position: absolute;
+      bottom: 20px;
+      left: 15px;
+      right: 15px;
+      background: #e53935;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* ========== MAIN ========== */
+    .main {
+      margin-left: 220px;
+      padding: 25px 30px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      background: #ddd;
+    }
+
+    .welcome {
+      margin-bottom: 25px;
+      color: #444;
+    }
+
+    h2 { margin-top: 0; }
+
+    /* ========== CARDS ========== */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+    }
+
+    .delete {
+      margin-top: 10px;
+      background: #e53935;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* ========== FORM ========== */
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .primary {
+      background: #000;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* ========== GRAPH PLACEHOLDER ========== */
+    .graph {
+      height: 180px;
+      background: repeating-linear-gradient(
+        45deg,
+        #eee,
+        #eee 10px,
+        #f9f9f9 10px,
+        #f9f9f9 20px
+      );
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: explain;
+      color: #777;
+      font-size: 14px;
+    }
+  </style>
 </head>
 
 <body>
 
-<script>
-const token = sessionStorage.getItem("token");
-const shopId = sessionStorage.getItem("shop_id");
-
-// 🚨 ABSOLUTE BLOCK
-if (!token || !shopId) {
-  location.replace("/admin/login.html");
-}
-</script>
-
+<!-- SIDEBAR -->
 <div class="sidebar">
-  <a onclick="loadPage('overview')" id="overview">🏠 Overview</a>
-  <a onclick="loadPage('products')" id="products">📦 Products</a>
-  <a onclick="loadPage('add-product')" id="add-product">➕ Add Product</a>
-  <a onclick="loadPage('analytics')" id="analytics">📊 Analytics</a>
-  <a onclick="loadPage('business')" id="business">🏪 Business</a>
-  <a onclick="logout()">🚪 Logout</a>
+  <div class="brand">🏪 Your Store</div>
+
+  <div class="nav">
+    <a href="#" id="nav-overview" onclick="showOverview()">📊 Overview</a>
+    <a href="#" id="nav-products" onclick="showProducts()">📦 Products</a>
+    <a href="#" id="nav-add" onclick="showAdd()">➕ Add Product</a>
+    <a href="#" id="nav-analytics" onclick="showAnalytics()">📈 Analytics</a>
+    <a href="#" id="nav-contact" onclick="showContact()">☎ Contact Us</a>
+  </div>
+
+  <button class="logout-btn" onclick="logout()">Logout</button>
 </div>
 
-<div class="main" id="content">Loading…</div>
+<!-- MAIN -->
+<div class="main">
+  <div class="header">
+    <div class="logo"></div>
+    <div id="businessName"><b>Business</b></div>
+  </div>
+
+  <div class="welcome" id="welcomeMsg"></div>
+
+  <div id="app"></div>
+</div>
 
 <script>
-function loadPage(page){
-  fetch("/admin/" + page + ".html")
-    .then(r=>r.text())
-    .then(html=>{
-      content.innerHTML = html;
-      document.querySelectorAll(".sidebar a")
-        .forEach(a=>a.classList.remove("active"));
-      document.getElementById(page)?.classList.add("active");
-    });
+/* ================= AUTH ================= */
+const token = localStorage.getItem("token");
+if (!token) location.href = "/admin/login.html";
+
+const payload = JSON.parse(atob(token.split(".")[1]));
+const shopId = payload.shop_id;
+
+/* ================= UTILS ================= */
+function setActive(id){
+  document.querySelectorAll(".nav a").forEach(a=>a.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
 }
 
+/* ================= OVERVIEW ================= */
+async function showOverview(){
+  setActive("nav-overview");
+  document.getElementById("app").innerHTML = `
+    <h2>Overview</h2>
+    <div class="grid">
+      <div class="card">Total Products<br><b id="k1">–</b></div>
+      <div class="card">Products with AR<br><b id="k2">–</b></div>
+      <div class="card">Products without AR<br><b id="k3">–</b></div>
+      <div class="card">Links Opened<br><b id="k4">–</b></div>
+      <div class="card">WhatsApp Started<br><b id="k5">–</b></div>
+    </div>
+  `;
+
+  const res = await fetch(`/api/products?shop=${shopId}`);
+  const products = await res.json();
+
+  document.getElementById("k1").innerText = products.length;
+  document.getElementById("k2").innerText = products.filter(p=>p.ar_model).length;
+  document.getElementById("k3").innerText = products.filter(p=>!p.ar_model).length;
+  document.getElementById("k4").innerText = "0";
+  document.getElementById("k5").innerText = "0";
+}
+
+/* ================= PRODUCTS ================= */
+async function showProducts(){
+  setActive("nav-products");
+
+  const res = await fetch(`/api/products?shop=${shopId}`);
+  const products = await res.json();
+
+  let html = `<h2>Products</h2><div class="grid">`;
+  products.forEach(p=>{
+    html += `
+      <div class="card">
+        <b>${p.category}</b>
+        <p>${p.description || ""}</p>
+        <button class="delete" onclick="deleteProduct('${p.id}')">Delete</button>
+      </div>
+    `;
+  });
+  html += `</div>`;
+
+  document.getElementById("app").innerHTML = html;
+}
+
+/* ================= ADD PRODUCT ================= */
+function showAdd(){
+  setActive("nav-add");
+  document.getElementById("app").innerHTML = `
+    <h2>Add Product</h2>
+    <div class="card" style="max-width:420px">
+      <input id="cat" placeholder="Category (e.g Sofa)">
+      <textarea id="desc" placeholder="Description"></textarea>
+      <input type="file" id="imgs" multiple>
+      <input id="ar" placeholder="AR link (optional)">
+      <button class="primary" onclick="addProduct()">Add Product</button>
+    </div>
+  `;
+}
+
+async function addProduct(){
+  const category = document.getElementById("cat").value.trim();
+  const description = document.getElementById("desc").value.trim();
+  const images = document.getElementById("imgs").files;
+  const ar = document.getElementById("ar").value.trim();
+
+  if (!category) {
+    alert("Category is required");
+    return;
+  }
+
+  if (!images.length) {
+    alert("Please upload at least one image");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("category", category);
+  fd.append("description", description);
+  fd.append("ar_model", ar);
+
+  for (let i = 0; i < images.length; i++) {
+    fd.append("images", images[i]); // MUST be "images"
+  }
+
+  const res = await fetch("/api/admin/product", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + token
+    },
+    body: fd
+  });
+
+  if (!res.ok) {
+    alert("Error adding product");
+    return;
+  }
+
+  alert("Product added successfully");
+  showProducts();
+}
+
+/* ================= DELETE ================= */
+async function deleteProduct(id){
+  await fetch(`/api/admin/product/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: "Bearer " + token }
+  });
+  showProducts();
+}
+
+/* ================= ANALYTICS ================= */
+function showAnalytics(){
+  setActive("nav-analytics");
+  document.getElementById("app").innerHTML = `
+    <h2>Analytics</h2>
+
+    <div class="card">Products Available: –</div>
+    <div class="card">Products with AR: –</div>
+    <div class="card">Products without AR: –</div>
+
+    <h3>Links Opened</h3>
+    <div class="graph">No data available yet</div>
+
+    <h3>WhatsApp Messages</h3>
+    <div class="graph">No data available yet</div>
+  `;
+}
+
+/* ================= CONTACT ================= */
+function showContact(){
+  setActive("nav-contact");
+  document.getElementById("app").innerHTML = `
+    <h2>Contact Us</h2>
+    <div class="card">📞 Phone: +91 XXXXXXXX</div>
+    <div class="card">📧 Email: support@yourcompany.com</div>
+    <div class="card">🌐 Website: coming soon</div>
+  `;
+}
+
+/* ================= LOGOUT ================= */
 function logout(){
-  sessionStorage.clear();
-  location.replace("/admin/login.html");
+  localStorage.removeItem("token");
+  location.href = "/admin/login.html";
 }
 
-loadPage("overview");
-</script>
+/* ================= INIT ================= */
+document.getElementById("welcomeMsg").innerText =
+  "Hello 👋 Welcome back! What’s your plan for today?";
 
+showOverview();
+
+
+
+</script>
 </body>
 </html>

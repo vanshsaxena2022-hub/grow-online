@@ -1,49 +1,30 @@
-<h2>Add Product</h2>
-
-<form id="f" style="
-max-width:420px;
-background:#fff;
-padding:22px;
-border-radius:18px;
-box-shadow:0 4px 12px rgba(0,0,0,.08)
-" enctype="multipart/form-data">
-
-<input name="category" placeholder="Category" required>
-<textarea name="description" placeholder="Description"></textarea>
-<input type="file" name="images" multiple required>
-
-<button>Add Product</button>
-</form>
-
-<style>
-input,textarea{
-width:100%;
-padding:12px;
-margin-bottom:14px;
-border-radius:10px;
-border:1px solid #ccc
-}
-button{
-width:100%;
-padding:14px;
-background:#000;
-color:#fff;
-border:none;
-border-radius:12px;
-font-size:16px
-}
-</style>
-
 <script>
-const token=localStorage.getItem("token");
-f.onsubmit=async e=>{
-e.preventDefault();
-const fd=new FormData(f);
-const r=await fetch("/api/admin/product",{
-method:"POST",
-headers:{Authorization:token},
-body:fd
-});
-r.ok?alert("Added"):alert("Failed");
-};
+async function addProduct() {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Please login again");
+    location.href = "/admin/login.html";
+    return;
+  }
+
+  const form = document.getElementById("productForm");
+  const data = new FormData(form);
+
+  const res = await fetch("/api/admin/product", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token
+    },
+    body: data
+  });
+
+  if (!res.ok) {
+    alert("Error adding product");
+    return;
+  }
+
+  alert("Product added");
+  form.reset();
+}
 </script>
+<button onclick="addProduct()">Add Product</button>

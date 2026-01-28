@@ -1,26 +1,21 @@
-<h2>Analytics</h2>
-<canvas id="chart"></canvas>
+<section id="analytics">
+  <h2>Analytics</h2>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-const ctx=document.getElementById("chart");
+  <!-- KPI cards -->
+  <div class="kpi-grid">
+    <div class="kpi">Products: <span id="kpi-products">0</span></div>
+    <div class="kpi">With AR: <span id="kpi-ar">0</span></div>
+    <div class="kpi">Without AR: <span id="kpi-no-ar">0</span></div>
+  </div>
 
-const labels=[...Array(7)].map((_,i)=>`Day ${i+1}`);
-const data=new Array(7).fill(0);
+  <!-- Graphs -->
+  <div class="graph-box">
+    <h3>Links Opened</h3>
+    <canvas id="linksGraph"></canvas>
+  </div>
 
-new Chart(ctx,{
-type:"line",
-data:{
-labels,
-datasets:[{
-label:"Visitors",
-data,
-borderColor:"#25D366",
-tension:.4
-}]
-},
-options:{
-scales:{y:{beginAtZero:true}}
-}
-});
-</script>
+  <div class="graph-box">
+    <h3>WhatsApp Started</h3>
+    <canvas id="whatsappGraph"></canvas>
+  </div>
+</section>

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Admin Login</title>
+
 <style>
 body{
   margin:0;
@@ -36,6 +37,7 @@ button{
   border:none;
   border-radius:12px;
   font-size:16px;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -51,32 +53,28 @@ button{
 
 <script>
 async function login(){
-  const email = emailInput.value.trim();
-  const password = passwordInput.value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
 
   const res = await fetch("/api/admin/login",{
     method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({email,password})
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ email, password })
   });
 
   if(!res.ok){
-    alert("Invalid login");
+    alert("Invalid credentials");
     return;
   }
 
   const data = await res.json();
 
-  // 🔒 SINGLE SOURCE OF TRUTH
-  sessionStorage.clear();
-  sessionStorage.setItem("token", data.token);
-  sessionStorage.setItem("shop_id", data.shop_id);
+  // ✅ Persistent login for demo
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("shop_id", data.shop_id);
 
-  location.replace("/admin/layout.html");
+  location.href = "/admin/layout.html";
 }
-
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
 </script>
 
 </body>
