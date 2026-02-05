@@ -1,152 +1,121 @@
 require("dotenv").config();
+
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
 const fs = require("fs");
-const multer = require("multer");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
 const pool = require("./db");
+console.log("🔥 SERVER.JS LOADED – VERSION 3");
 
 const app = express();
+
+/* ================= BASIC MIDDLEWARE ================= */
 app.use(cors());
 app.use(express.json());
 
-/* ================= AUTH ================= */
+/* ================= ENV ================= */
+const PORT = process.env.PORT || 4000;
+const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
+
+/* ================= AUTH MIDDLEWARE ================= */
 function auth(req, res, next) {
   const header = req.headers.authorization;
-  if (!header) return res.sendStatus(401);
+  if (!header) return res.status(401).json({ error: "No token" });
 
+  const token = header.split(" ")[1];
   try {
-    const token = header.split(" ")[1];
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = jwt.verify(token, JWT_SECRET);
     next();
   } catch {
-    res.sendStatus(401);
+    res.status(401).json({ error: "Invalid token" });
   }
 }
 
-/* ================= UPLOAD SETUP ================= */
-const uploadDir = path.join(__dirname, "public/uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+/* ================= FILE UPLOAD SETUP ================= */
+const uploadDir = path.join(__dirname, "public", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: uploadDir,
-    filename: (req, file, cb) => {
-      cb(null, Date.now() + "-" + file.originalname.replace(/\s+/g, "_"));
-    }
-  })
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, uploadDir),
+  filename: (_, file, cb) => {
+    const safe = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+    cb(null, Date.now() + "-" + safe);
+  }
 });
 
-/* ================= LOGIN ================= */
+const upload = multer({ storage });
+
+/* ================= HEALTH ================= */
+app.get("/health", (_, res) => {
+  res.json({ status: "OK" });
+});
+
+/* ================= SHOP API (CRITICAL) ================= */
+app.get("/api/shop/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const q = await pool.query(
+      "SELECT id, name, logo_url, tagline FROM shops WHERE id = $1",
+      [id]
+    );
+
+    if (!q.rows.length) {
+      return res.status(404).json({ error: "Shop not found" });
+    }
+
+    res.json(q.rows[0]);
+  } catch (err) {
+    console.error("SHOP API ERROR:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/* ================= ADMIN LOGIN ================= */
 app.post("/api/admin/login", async (req, res) => {
   const { email, password } = req.body;
 
   const q = await pool.query(
-    "SELECT * FROM admins WHERE email=$1",
+    "SELECT * FROM admins WHERE email = $1",
     [email]
   );
 
-  if (!q.rows.length) return res.sendStatus(401);
+  if (!q.rows.length) return res.status(401).json({ error: "Invalid login" });
 
   const ok = await bcrypt.compare(password, q.rows[0].password);
-  if (!ok) return res.sendStatus(401);
+  if (!ok) return res.status(401).json({ error: "Invalid login" });
 
   const token = jwt.sign(
     { shop_id: q.rows[0].shop_id },
-    process.env.JWT_SECRET,
+    JWT_SECRET,
     { expiresIn: "7d" }
   );
 
   res.json({ token });
 });
 
-/* ================= ADD PRODUCT ================= */
-app.post(
-  "/api/admin/product",
-  auth,
-  upload.array("images", 6),
-  async (req, res) => {
-    try {
-      const { category, description, ar_model } = req.body;
-
-      if (!category) {
-        return res.status(400).json({ error: "Category required" });
-      }
-
-      const images = (req.files || []).map(
-        f => "/uploads/" + f.filename
-      );
-
-      await pool.query(
-        `
-        INSERT INTO products
-        (id, shop_id, name, category, description, image_urls, image_url, ar_model)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-        `,
-        [
-          uuidv4(),
-          req.user.shop_id,
-          category,               // 🔑 name = category (internal)
-          category,
-          description || "",
-          images,
-          images[0] || null,
-          ar_model || null
-        ]
-      );
-
-      res.json({ success: true });
-    } catch (err) {
-      console.error("ADD PRODUCT ERROR:", err);
-      res.status(500).json({ error: "Failed to add product" });
-    }
-  }
-);
-
-/* ================= PRODUCT DETAIL (PUBLIC) ================= */
-app.get("/api/product/:id", async (req, res) => {
-  try {
-    const q = await pool.query(
-      `
-      SELECT
-        id,
-        category,
-        description,
-        image_url,
-        image_urls,
-        ar_model
-      FROM products
-      WHERE id = $1
-      `,
-      [req.params.id]
-    );
-
-    if (!q.rows.length) {
-      return res.status(404).json({ error: "Product not found" });
-    }
-
-    res.json(q.rows[0]);
-  } catch (err) {
-    console.error("PRODUCT DETAIL ERROR:", err);
-    res.status(500).json({ error: "Failed to load product" });
-  }
-});
-
-
-
-/* ================= LIST PRODUCTS ================= */
+/* ================= PRODUCTS (CUSTOMER + ADMIN) ================= */
 app.get("/api/products", async (req, res) => {
   const { shop } = req.query;
-  if (!shop) return res.json([]);
+  if (!shop) return res.status(400).json({ error: "shop missing" });
 
   const q = await pool.query(
     `
-    SELECT id, category, description, image_url, ar_model
+    SELECT
+      id,
+      category,
+      description,
+      image_url,
+      image_urls,
+      ar_model
     FROM products
-    WHERE shop_id=$1
+    WHERE shop_id = $1
     ORDER BY created_at DESC
     `,
     [shop]
@@ -155,20 +124,62 @@ app.get("/api/products", async (req, res) => {
   res.json(q.rows);
 });
 
+/* ================= ADD PRODUCT (ADMIN) ================= */
+app.post(
+  "/api/admin/product",
+  auth,
+  upload.array("images", 6),
+  async (req, res) => {
+    try {
+      const { category, description, ar_model, name } = req.body;
+      if (!category) {
+        return res.status(400).json({ error: "category required" });
+      }
+
+      const id = uuidv4();
+      const images = (req.files || []).map(
+        f => "/uploads/" + f.filename
+      );
+
+      await pool.query(
+        `
+        INSERT INTO products
+        (id, name, category, description, image_url, image_urls, ar_model, shop_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        `,
+        [
+          id,
+          name || category,          // SAFETY
+          category,
+          description || "",
+          images[0],
+          images,
+          ar_model || null,
+          req.user.shop_id
+        ]
+      );
+
+      res.json({ status: "created" });
+    } catch (err) {
+      console.error("ADD PRODUCT ERROR:", err);
+      res.status(500).json({ error: "Failed to add product" });
+    }
+  }
+);
+
 /* ================= DELETE PRODUCT ================= */
 app.delete("/api/admin/product/:id", auth, async (req, res) => {
   await pool.query(
     "DELETE FROM products WHERE id=$1 AND shop_id=$2",
     [req.params.id, req.user.shop_id]
   );
-  res.json({ deleted: true });
+  res.json({ status: "deleted" });
 });
 
-/* ================= STATIC ================= */
+/* ================= STATIC FILES (LAST) ================= */
 app.use(express.static(path.join(__dirname, "public")));
 
 /* ================= START ================= */
-const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log("✅ Server running on port", PORT);
+  console.log(`✅ Server running on port ${PORT}`);
 });

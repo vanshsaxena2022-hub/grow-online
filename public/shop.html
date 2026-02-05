@@ -1,150 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Shop</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<title>Store</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <style>
-    body { margin:0; font-family:Arial; background:#f6f6f6; }
+<style>
+*{box-sizing:border-box;font-family:Arial}
+body{margin:0;background:#f7f7f7}
 
-    header {
-      background:#fff;
-      padding:14px;
-      display:flex;
-      align-items:center;
-      gap:12px;
-      border-bottom:1px solid #ddd;
-      position:sticky;
-      top:0;
-      z-index:10;
-    }
+header{
+  background:#fff;padding:15px 20px;
+  border-bottom:1px solid #ddd;
+  display:flex;align-items:center;gap:15px
+}
+header img{
+  height:45px;width:45px;object-fit:contain
+}
+header h1{margin:0;font-size:22px}
+header p{margin:3px 0 0;color:#666;font-size:13px}
 
-    header img { height:42px; border-radius:6px; }
-    header h2 { margin:0; font-size:18px; }
-    header p { margin:0; font-size:12px; color:#666; }
+.grid{
+  padding:20px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:20px
+}
+@media(max-width:768px){
+  .grid{grid-template-columns:repeat(2,1fr)}
+}
 
-    .cats {
-      display:flex;
-      gap:10px;
-      padding:10px;
-      overflow-x:auto;
-      background:#fff;
-    }
-
-    .cat {
-      padding:6px 14px;
-      border-radius:20px;
-      background:#eee;
-      cursor:pointer;
-      white-space:nowrap;
-      font-size:14px;
-    }
-
-    .cat.active {
-      background:#000;
-      color:#fff;
-    }
-
-    /* GRID FIX */
-    .grid {
-      padding:14px;
-      display:grid;
-      grid-template-columns: repeat(4, 1fr); /* DESKTOP: 4 */
-      gap:14px;
-    }
-
-    @media (max-width: 768px) {
-      .grid {
-        grid-template-columns: repeat(2, 1fr); /* MOBILE: 2 */
-      }
-    }
-
-    .card {
-      background:#fff;
-      border-radius:12px;
-      overflow:hidden;
-      cursor:pointer;
-      border:6px solid #25D366; /* GREEN BORDER */
-      transition: transform 0.15s ease;
-    }
-
-    .card:hover {
-      transform: scale(1.02);
-    }
-
-    .card img {
-      width:100%;
-      height:160px;
-      object-fit:cover;
-      display:block;
-    }
-  </style>
+.card{
+  background:#fff;border:2px solid #00c853;
+  border-radius:10px;padding:10px;cursor:pointer
+}
+.card img{
+  width:100%;height:180px;object-fit:cover;border-radius:8px
+}
+</style>
 </head>
 
 <body>
 
 <header>
-  <img src="/logo.png" id="logo">
+  <img id="logo" style="display:none">
   <div>
-    <h2 id="shopName">Store</h2>
-    <p id="tagline">Visualize before you buy</p>
+    <h1 id="shopName">Store</h1>
+    <p id="tagline"></p>
   </div>
 </header>
 
-<div class="cats" id="cats"></div>
 <div class="grid" id="products"></div>
 
 <script>
 const shopId = new URLSearchParams(location.search).get("shop");
-if (!shopId) {
-  document.body.innerHTML = "<h2>Invalid shop</h2>";
-  throw "";
+
+/* ===== LOAD SHOP ===== */
+async function loadShop(){
+  const res = await fetch(`/api/shop/${shopId}`);
+  const shop = await res.json();
+
+  document.getElementById("shopName").innerText = shop.name;
+  document.getElementById("tagline").innerText = shop.tagline || "";
+
+  if(shop.logo_url){
+    const img = document.getElementById("logo");
+    img.src = shop.logo_url;
+    img.style.display = "block";
+  }
 }
 
-const API = location.origin;
-let ALL = [];
+/* ===== LOAD PRODUCTS ===== */
+async function loadProducts(){
+  const res = await fetch(`/api/products?shop=${shopId}`);
+  const products = await res.json();
 
-fetch(`${API}/api/products?shop=${shopId}`)
-  .then(r => r.json())
-  .then(products => {
-    ALL = products;
-
-    const categories = [...new Set(products.map(p => p.category))];
-    const catsBox = document.getElementById("cats");
-
-    catsBox.innerHTML = `<div class="cat active" onclick="filter('all',this)">All</div>`;
-    categories.forEach(c => {
-      catsBox.innerHTML += `<div class="cat" onclick="filter('${c}',this)">${c}</div>`;
-    });
-
-    render(products);
-  });
-
-function filter(cat, el) {
-  document.querySelectorAll(".cat").forEach(c => c.classList.remove("active"));
-  el.classList.add("active");
-
-  render(cat === "all" ? ALL : ALL.filter(p => p.category === cat));
+  productsEl.innerHTML = products.map(p=>`
+    <div class="card">
+      <img src="${p.image_url}">
+    </div>
+  `).join("");
 }
 
-function render(list) {
-  const box = document.getElementById("products");
-  box.innerHTML = "";
+const productsEl = document.getElementById("products");
 
-  list.forEach(p => {
-    box.innerHTML += `
-      <div class="card" onclick="openProduct('${p.id}')">
-        <img src="${p.image_url}">
-      </div>
-    `;
-  });
-}
-
-function openProduct(id) {
-  location.href = `/product.html?id=${id}`;
-}
+loadShop();
+loadProducts();
 </script>
-
 </body>
 </html>
