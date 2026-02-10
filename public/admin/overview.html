@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Overview</title>
+
+<style>
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:20px
+}
+.card{
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,.08)
+}
+.card h3{margin:0;font-size:14px;color:#777}
+.card p{margin:8px 0 0;font-size:26px;font-weight:bold}
+</style>
+</head>
+
+<body>
+
+<h2>Overview</h2>
+
+<div class="cards">
+  <div class="card"><h3>Total Products</h3><p id="tp">0</p></div>
+  <div class="card"><h3>Products with AR</h3><p id="ar">0</p></div>
+  <div class="card"><h3>Products without AR</h3><p id="nar">0</p></div>
+  <div class="card"><h3>Total Visitors</h3><p id="vis">0</p></div>
+  <div class="card"><h3>WhatsApp Enquiries</h3><p id="wa">0</p></div>
+</div>
+
+<script>
+const shop = localStorage.getItem("shop_id");
+
+fetch(`/api/products?shop=${shop}`)
+.then(r=>r.json())
+.then(p=>{
+  document.getElementById("tp").innerText = p.length;
+  document.getElementById("ar").innerText = p.filter(x=>x.ar_model).length;
+  document.getElementById("nar").innerText = p.filter(x=>!x.ar_model).length;
+});
+
+fetch(`/api/analytics?shop=${shop}&range=7`)
+.then(r=>r.json())
+.then(d=>{
+  document.getElementById("vis").innerText = d.visitors || 0;
+  document.getElementById("wa").innerText = d.whatsapp || 0;
+});
+</script>
+
+</body>
+</html>

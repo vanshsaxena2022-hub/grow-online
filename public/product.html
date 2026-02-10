@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Product</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+
+    body {
+      margin: 0;
+      background: #f5f6f8;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    /* ===== IMAGE AREA ===== */
+    .image-wrapper {
+      position: relative;
+      max-width: 600px;
+      margin: auto;
+    }
+
+    .image-wrapper img {
+      width: 100%;
+      height: 320px;
+      object-fit: cover;
+      border-radius: 12px;
+      display: none;
+    }
+
+    .image-wrapper img.active {
+      display: block;
+    }
+
+    /* ===== ARROWS ===== */
+    .arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.35);
+      color: #fff;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .arrow.left { left: 10px; }
+    .arrow.right { right: 10px; }
+
+    /* ===== DOTS ===== */
+    .dots {
+      display: flex;
+      justify-content: center;
+      margin-top: 8px;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.3);
+    }
+
+    .dot.active {
+      background: #000;
+    }
+
+    /* ===== CONTENT ===== */
+    .content {
+      max-width: 600px;
+      margin: 20px auto 0;
+    }
+
+    .category {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    .description {
+      font-size: 15px;
+      color: #333;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+
+    .btn-ar {
+      background: #000;
+      color: #fff;
+      display: none;
+    }
+
+    .btn-wa {
+      background: #25D366;
+      color: #fff;
+    }
+
+    /* ===== DESKTOP ===== */
+    @media (min-width: 768px) {
+      .image-wrapper img {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="page">
+  <div class="image-wrapper">
+    <div class="arrow left" onclick="prev()">‹</div>
+    <div class="arrow right" onclick="next()">›</div>
+    <div id="images"></div>
+  </div>
+
+  <div class="dots" id="dots"></div>
+
+  <div class="content">
+    <div class="category" id="category"></div>
+    <div class="description" id="description"></div>
+
+    <button id="arBtn" class="btn btn-ar">View in AR</button>
+    <button class="btn btn-wa" onclick="buyNow()">Buy on WhatsApp</button>
+  </div>
+</div>
+
+<script>
+const productId = new URLSearchParams(location.search).get("id");
+let images = [];
+let current = 0;
+
+async function loadProduct() {
+  const res = await fetch(`/api/product/${productId}`);
+  if (!res.ok) {
+    document.body.innerHTML = "Invalid product";
+    return;
+  }
+
+  const p = await res.json();
+
+  document.getElementById("category").innerText = p.category || "";
+  document.getElementById("description").innerText = p.description || "";
+
+  images = p.image_urls || [];
+  const imgBox = document.getElementById("images");
+  const dotsBox = document.getElementById("dots");
+
+  images.forEach((src, i) => {
+    const img = document.createElement("img");
+    img.src = src;
+    if (i === 0) img.classList.add("active");
+    imgBox.appendChild(img);
+
+    const dot = document.createElement("div");
+    dot.className = "dot" + (i === 0 ? " active" : "");
+    dotsBox.appendChild(dot);
+  });
+
+  if (p.ar_model && p.ar_model.trim() !== "") {
+    const arBtn = document.getElementById("arBtn");
+    arBtn.style.display = "block";
+       arBtn.onclick = () => {
+        window.location.href = `/ar.html?model=${encodeURIComponent(p.ar_model)}`;
+};
+  }
+}
+
+function show(index) {
+  const imgs = document.querySelectorAll(".image-wrapper img");
+  const dots = document.querySelectorAll(".dot");
+
+  imgs[current].classList.remove("active");
+  dots[current].classList.remove("active");
+
+  current = (index + images.length) % images.length;
+
+  imgs[current].classList.add("active");
+  dots[current].classList.add("active");
+}
+
+function next() { show(current + 1); }
+function prev() { show(current - 1); }
+
+function buyNow() {
+  const msg = encodeURIComponent("Hi, I am interested in this product");
+  location.href = `https://wa.me/?text=${msg}`;
+}
+
+loadProduct();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product</title>
+
+<style>
+body { margin:0;font-family:Arial;background:#f7f7f7 }
+header { background:#fff;padding:14px;border-bottom:1px solid #ddd }
+#gallery {
+  display:flex;
+  gap:10px;
+  padding:14px;
+  overflow-x:auto;
+  background:#fff;
+}
+#gallery img {
+  height:220px;
+  min-width:220px;
+  object-fit:cover;
+  border-radius:10px;
+}
+.box { padding:16px }
+h2 { margin:0 0 8px }
+p { color:#555 }
+.btn {
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+  margin-top:10px;
+}
+.buy { background:#25D366;color:#fff }
+.ar { background:#000;color:#fff }
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2 id="category">Loading…</h2>
+</header>
+
+<div id="gallery"></div>
+
+<div class="box">
+  <p id="desc"></p>
+  <button class="btn buy" onclick="buy()">Buy Now</button>
+  <button class="btn ar" id="arBtn" style="display:none">View in AR</button>
+</div>
+
+<script>
+const id = new URLSearchParams(location.search).get("id");
+if (!id) {
+  document.body.innerHTML = "<h2>Invalid product</h2>";
+  throw "";
+}
+
+const API = window.location.origin;
+
+fetch(API + "/api/product/" + id)
+  .then(r => r.json())
+  .then(p => {
+    category.innerText = p.category || "Product";
+    desc.innerText = p.description || "";
+
+    gallery.innerHTML = "";
+    const imgs =
+      (p.image_urls && p.image_urls.length && p.image_urls) ||
+      [p.image_url];
+
+    imgs.forEach(img => {
+      if (img) gallery.innerHTML += `<img src="${img}">`;
+    });
+
+    if (p.ar_model) {
+      arBtn.style.display = "block";
+      arBtn.onclick = () => window.open(p.ar_model);
+    }
+
+    window.PRODUCT = p;
+  });
+
+function buy() {
+  const phone = "91XXXXXXXXXX";
+  const msg = `Hello 👋
+I am interested in this ${PRODUCT.category}.
+
+Please share price & details.`;
+
+  window.location.href =
+    "https://wa.me/" + phone + "?text=" + encodeURIComponent(msg);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Store</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<style>
+*{box-sizing:border-box;font-family:Arial}
+body{margin:0;background:#f7f7f7}
+
+header{
+  background:#fff;padding:15px 20px;
+  border-bottom:1px solid #ddd;
+  display:flex;align-items:center;gap:15px
+}
+header img{
+  height:45px;width:45px;object-fit:contain
+}
+header h1{margin:0;font-size:22px}
+header p{margin:3px 0 0;color:#666;font-size:13px}
+
+.grid{
+  padding:20px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:20px
+}
+@media(max-width:768px){
+  .grid{grid-template-columns:repeat(2,1fr)}
+}
+
+.card{
+  background:#fff;border:2px solid #00c853;
+  border-radius:10px;padding:10px;cursor:pointer
+}
+.card img{
+  width:100%;height:180px;object-fit:cover;border-radius:8px
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <img id="logo" style="display:none">
+  <div>
+    <h1 id="shopName">Store</h1>
+    <p id="tagline"></p>
+  </div>
+</header>
+
+<div class="grid" id="products"></div>
+
+<script>
+const shopId = new URLSearchParams(location.search).get("shop");
+
+/* ===== LOAD SHOP ===== */
+async function loadShop(){
+  const res = await fetch(`/api/shop/${shopId}`);
+  const shop = await res.json();
+
+  document.getElementById("shopName").innerText = shop.name;
+  document.getElementById("tagline").innerText = shop.tagline || "";
+
+  if(shop.logo_url){
+    const img = document.getElementById("logo");
+    img.src = shop.logo_url;
+    img.style.display = "block";
+  }
+}
+
+/* ===== LOAD PRODUCTS ===== */
+async function loadProducts(){
+  const res = await fetch(`/api/products?shop=${shopId}`);
+  const products = await res.json();
+
+  productsEl.innerHTML = products.map(p=>`
+    <div class="card">
+      <img src="${p.image_url}">
+    </div>
+  `).join("");
+}
+
+const productsEl = document.getElementById("products");
+
+loadShop();
+loadProducts();
+</script>
+</body>
+</html>

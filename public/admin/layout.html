@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Admin Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<style>
+*{box-sizing:border-box;font-family:Arial}
+body{margin:0;background:#f5f6f8}
+
+.sidebar{
+  width:220px;height:100vh;position:fixed;
+  background:#000;color:#fff;padding:20px
+}
+.sidebar h2{margin:0 0 20px;font-size:18px}
+.sidebar a{
+  display:block;color:#bbb;padding:10px;
+  border-radius:6px;text-decoration:none;margin-bottom:5px
+}
+.sidebar a.active,.sidebar a:hover{
+  background:#111;color:#00ff99
+}
+.logout{
+  position:absolute;bottom:20px;left:20px;right:20px;
+  background:#e53935;color:#fff;border:none;
+  padding:10px;border-radius:6px;cursor:pointer
+}
+
+.main{margin-left:220px;padding:25px}
+
+.card{
+  background:#fff;padding:15px;border-radius:10px;margin-bottom:20px
+}
+.grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:15px
+}
+
+.delete{
+  background:#e53935;color:#fff;border:none;
+  padding:8px;border-radius:6px;cursor:pointer
+}
+
+input,textarea{
+  width:100%;padding:10px;margin-bottom:10px
+}
+button.primary{
+  background:#000;color:#fff;
+  padding:10px;border:none;border-radius:6px;cursor:pointer
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2 id="businessName">Loading…</h2>
+
+  <a class="active" onclick="overview()">Overview</a>
+  <a onclick="products()">Products</a>
+  <a onclick="addProduct()">Add Product</a>
+  <a onclick="analytics()">Analytics</a>
+  <a onclick="contact()">Contact</a>
+
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="main">
+  <div id="app"></div>
+</div>
+
+<script>
+/* ========= AUTH ========= */
+const token = localStorage.getItem("token");
+if(!token) location.href="/admin/login.html";
+
+const shopId = JSON.parse(atob(token.split(".")[1])).shop_id;
+
+/* ========= LOAD BUSINESS ========= */
+async function loadBusiness(){
+  const res = await fetch(`/api/shop/${shopId}`);
+  if(!res.ok) return;
+
+  const shop = await res.json();
+  document.getElementById("businessName").innerText = shop.name;
+}
+loadBusiness();
+
+/* ========= OVERVIEW ========= */
+async function overview(){
+  setActive(0);
+  const res = await fetch(`/api/products?shop=${shopId}`);
+  const products = await res.json();
+
+  app.innerHTML = `
+  <div class="grid">
+    <div class="card">Products<br><b>${products.length}</b></div>
+    <div class="card">With AR<br><b>${products.filter(p=>p.ar_model).length}</b></div>
+    <div class="card">Without AR<br><b>${products.filter(p=>!p.ar_model).length}</b></div>
+    <div class="card">WhatsApp Opens<br><b>0</b></div>
+  </div>`;
+}
+
+/* ========= PRODUCTS ========= */
+async function products(){
+  setActive(1);
+  const res = await fetch(`/api/products?shop=${shopId}`);
+  const products = await res.json();
+
+  app.innerHTML = `
+  <div class="grid">
+    ${products.map(p=>`
+      <div class="card">
+        <b>${p.category}</b>
+        <p>${p.description || ""}</p>
+        <button class="delete" onclick="del('${p.id}')">Delete</button>
+      </div>
+    `).join("")}
+  </div>`;
+}
+
+/* ========= ADD PRODUCT ========= */
+function addProduct(){
+  setActive(2);
+  app.innerHTML = `
+  <div class="card" style="max-width:420px">
+    <input id="cat" placeholder="Category">
+    <textarea id="desc" placeholder="Description"></textarea>
+    <input type="file" id="imgs" multiple>
+    <input id="ar" placeholder="AR link (optional)">
+    <button class="primary" onclick="save()">Add Product</button>
+  </div>`;
+}
+
+async function save(){
+  const fd = new FormData();
+  fd.append("name", cat.value);   // IMPORTANT
+  fd.append("category", cat.value);
+  fd.append("description", desc.value);
+  fd.append("ar_model", ar.value);
+  [...imgs.files].forEach(f=>fd.append("images",f));
+
+  const r = await fetch("/api/admin/product",{
+    method:"POST",
+    headers:{Authorization:"Bearer "+token},
+    body:fd
+  });
+
+  if(!r.ok){ alert("Failed to add product"); return; }
+  products();
+}
+
+/* ========= DELETE ========= */
+async function del(id){
+  await fetch(`/api/admin/product/${id}`,{
+    method:"DELETE",
+    headers:{Authorization:"Bearer "+token}
+  });
+  products();
+}
+
+/* ========= MISC ========= */
+function analytics(){ setActive(3); app.innerHTML=`<div class="card">Analytics</div>` }
+function contact(){ setActive(4); app.innerHTML=`<div class="card">Contact</div>` }
+
+function logout(){
+  localStorage.removeItem("token");
+  location.href="/admin/login.html";
+}
+
+function setActive(i){
+  document.querySelectorAll(".sidebar a").forEach(a=>a.classList.remove("active"));
+  document.querySelectorAll(".sidebar a")[i].classList.add("active");
+}
+
+overview();
+</script>
+</body>
+</html>

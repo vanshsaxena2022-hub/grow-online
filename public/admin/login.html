@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Admin Login</title>
+
+<style>
+body{
+  margin:0;
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f4f4f4;
+  font-family:Arial;
+}
+.box{
+  background:#fff;
+  padding:30px;
+  width:320px;
+  border-radius:16px;
+  box-shadow:0 10px 25px rgba(0,0,0,.15);
+}
+h2{text-align:center}
+input{
+  width:100%;
+  padding:12px;
+  margin-bottom:14px;
+  border-radius:10px;
+  border:1px solid #ccc;
+}
+button{
+  width:100%;
+  padding:14px;
+  background:#000;
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-size:16px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+  <h2>Admin Login</h2>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+</div>
+
+<script>
+async function login(){
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  const res = await fetch("/api/admin/login",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({ email, password })
+  });
+
+  if(!res.ok){
+    alert("Invalid credentials");
+    return;
+  }
+
+  const data = await res.json();
+
+  // ✅ Persistent login for demo
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("shop_id", data.shop_id);
+
+  location.href = "/admin/layout.html";
+}
+</script>
+
+</body>
+</html>
